@@ -1,9 +1,4 @@
-"""Centralized configuration.
-
-Everything tunable lives here so Day-2 chunking/retrieval iteration is one-file edits.
-"""
-from __future__ import annotations
-
+"""Central configuration for the Clinical Guidelines RAG system."""
 import os
 from pathlib import Path
 
@@ -11,35 +6,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Paths -------------------------------------------------------------------
-PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
-DATA_DIR: Path = PROJECT_ROOT / "data"
-RAW_PDF_DIR: Path = DATA_DIR / "raw"
-CHROMA_DIR: Path = DATA_DIR / "chroma_db"
+# --- Paths ---
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
+CHROMA_DIR = DATA_DIR / "chroma_db"
 
-RAW_PDF_DIR.mkdir(parents=True, exist_ok=True)
+RAW_DIR.mkdir(parents=True, exist_ok=True)
 CHROMA_DIR.mkdir(parents=True, exist_ok=True)
 
-# --- Vector store ------------------------------------------------------------
-COLLECTION_NAME: str = "aacap_guidelines"
+# --- API keys ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY not found. Add it to .env")
 
-# --- Embedding model ---------------------------------------------------------
-# BGE-M3: 1024-dim, multilingual, supports dense + sparse + multi-vector in one model.
-# Downloads ~2.3 GB on first use to ~/.cache/huggingface/.
-EMBED_MODEL_NAME: str = "BAAI/bge-m3"
+# --- Models ---
+# bge-m3: 1024-dim, multilingual, ~2.3GB. Already cached from your ingest run.
+# Alternative: "BAAI/bge-small-en-v1.5" (130MB, faster, English-only).
+EMBED_MODEL = "BAAI/bge-m3"
 
-# --- LLM ---------------------------------------------------------------------
-# Sonnet 4.6 = balanced default. Swap to claude-opus-4-7 for hardest queries,
-# claude-haiku-4-5-20251001 for cheap iteration during dev.
-LLM_MODEL: str = "claude-sonnet-4-6"
-LLM_MAX_TOKENS: int = 1024
+# Groq's current flagship general-purpose model. Alternatives:
+#   "llama-3.1-70b-versatile", "llama-3.1-8b-instant" (faster, weaker)
+LLM_MODEL = "llama-3.3-70b-versatile"
+LLM_TEMPERATURE = 0.1  # Low — clinical answers should be conservative
 
-# --- Chunking (tune on Day 2) ------------------------------------------------
-# Clinical guidelines have dense, structured prose. 512 tokens with 100-token
-# overlap is a reasonable starting point; expect to revisit.
-CHUNK_SIZE: int = 512
-CHUNK_OVERLAP: int = 100
+# --- Chunking ---
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 100
 
-# --- Retrieval (tune on Day 2) -----------------------------------------------
-SIMILARITY_TOP_K: int = 5
+# --- Retrieval ---
+TOP_K = 5
 
+# --- Chroma ---
+COLLECTION_NAME = "aacap_guidelines"

@@ -1,12 +1,6 @@
-"""Build the vector index from PDFs in data/raw/.
-
-Idempotent: drops and rebuilds the Chroma collection every run. Safe to re-run
-after dropping new PDFs into data/raw/ or after tweaking chunking in config.py.
-
-Usage:
-    python -m src.ingest
-"""
-from __future__ import annotations
+"""Parse PDFs from data/raw/, chunk, embed, and store in ChromaDB."""
+import logging
+from pathlib import Path
 
 import chromadb
 from llama_index.core import (
@@ -25,57 +19,72 @@ from src.config import (
     CHUNK_OVERLAP,
     CHUNK_SIZE,
     COLLECTION_NAME,
-    EMBED_MODEL_NAME,
-    RAW_PDF_DIR,
+    EMBED_MODEL,
+    RAW_DIR,
 )
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
+)
+log = logging.getLogger(__name__)
 
 
 def build_index() -> VectorStoreIndex:
-    # 1. Configure embeddings + chunker globally
-    print(f"[1/4] Loading embedding model: {EMBED_MODEL_NAME}")
-    Settings.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL_NAME)
+    # Global LlamaIndex settings — no LLM needed for ingestion
+    Settings.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
     Settings.node_parser = SentenceSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
     )
+    Settings.llm = None
 
-    # 2. Load PDFs. PyMuPDFReader yields one Document per page, with page_label
-    #    metadata — essential for citation accuracy.
-    print(f"[2/4] Reading PDFs from {RAW_PDF_DIR}")
-    pdfs = list(RAW_PDF_DIR.glob("*.pdf"))
-    if not pdfs:
+    pdf_files = list(RAW_DIR.glob("*.pdf"))
+    if not pdf_files:
         raise FileNotFoundError(
-            f"No PDFs found in {RAW_PDF_DIR}. "
-            "Run scripts/download_guidelines.py first."
+            f"No PDFs found in {RAW_DIR}. Add PDFs or run "
+            "scripts/download_guidelines.py first."
         )
-    reader = SimpleDirectoryReader(
-        input_dir=str(RAW_PDF_DIR),
-        file_extractor={".pdf": PyMuPDFReader()},
-    )
-    docs = reader.load_data()
-    n_files = len({d.metadata.get("file_name") for d in docs})
-    print(f"      Loaded {len(docs)} pages across {n_files} guidelines")
+    log.info(f"Found {len(pdf_files)} PDF(s)")
 
-    # 3. Reset the Chroma collection for a clean rebuild
-    print(f"[3/4] Resetting Chroma collection '{COLLECTION_NAME}'")
-    chroma_client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+    # PyMuPDF gives much cleaner text than pypdf for scientific PDFs
+    reader = PyMuPDFReader()
+    documents = []
+    for pdf_path in pdf_files:
+        pages = reader.load_data(file_path=pdf_path)
+        for page_num, page_doc in enumerate(pages, start=1):
+            page_doc.metadata["file_name"] = pdf_path.name
+            page_doc.metadata["page_label"] = str(page_num)
+            documents.append(page_doc)
+    log.info(f"Loaded {len(documents)} page(s) across {len(pdf_files)} PDF(s)")
+
+    # Normalize metadata so citations are clean
+    for doc in documents:
+        if "file_path" in doc.metadata:
+            doc.metadata["source"] = Path(doc.metadata["file_path"]).name
+        # PyMuPDFReader sets "source" too sometimes; ensure page label exists
+        doc.metadata.setdefault(
+            "page_label", str(doc.metadata.get("page", "?"))
+        )
+
+    # Set up Chroma — wipe + recreate the collection for clean re-runs
+    db = chromadb.PersistentClient(path=str(CHROMA_DIR))
     try:
-        chroma_client.delete_collection(COLLECTION_NAME)
-    except Exception:  # noqa: BLE001 — fine if it didn't exist yet
+        db.delete_collection(COLLECTION_NAME)
+        log.info(f"Deleted existing collection '{COLLECTION_NAME}'")
+    except Exception:
         pass
-    chroma_collection = chroma_client.create_collection(COLLECTION_NAME)
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    collection = db.create_collection(COLLECTION_NAME)
+
+    vector_store = ChromaVectorStore(chroma_collection=collection)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    # 4. Chunk + embed + persist
-    print(f"[4/4] Building index (chunk_size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})")
+    log.info("Embedding + indexing… (first run downloads the embedding model)")
     index = VectorStoreIndex.from_documents(
-        docs,
+        documents,
         storage_context=storage_context,
         show_progress=True,
     )
-    print(f"\n✓ Done. Collection '{COLLECTION_NAME}' has {chroma_collection.count()} chunks.")
-    print(f"  Persisted to {CHROMA_DIR}")
+
+    log.info(f"Indexed {collection.count()} chunks into '{COLLECTION_NAME}'")
     return index
 
 
