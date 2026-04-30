@@ -31,11 +31,11 @@ LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_TEMPERATURE = 0.1  # Low — clinical answers should be conservative
 
 # --- Chunking ---
-CHUNK_SIZE = 512
-CHUNK_OVERLAP = 100
+CHUNK_SIZE = 256
+CHUNK_OVERLAP = 50
 
 # --- Retrieval ---
-TOP_K = 5
+TOP_K = 8
 
 # --- Chroma ---
 COLLECTION_NAME = "aacap_guidelines"
