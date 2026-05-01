@@ -21,3 +21,4 @@ venv/
 .idea/
 *.swp
 data/raw/*.pdf
+eval/results/

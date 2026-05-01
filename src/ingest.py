@@ -28,6 +28,13 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# Page 1 of each AACAP PDF = abstract + journal masthead. The dense topical
+# vocabulary of the abstract dominates retrieval as a near-tie for any query
+# about that paper, pushing the actual recommendation pages down to ranks
+# 2-6. Day-2 eval (run_20260501_112155) confirmed this: p1 chunks took rank
+# 1 on 6+ of 12 questions. Set this to False to revert.
+SKIP_FIRST_PAGE = True
+
 
 def build_index() -> VectorStoreIndex:
     # Global LlamaIndex settings — no LLM needed for ingestion
@@ -48,13 +55,23 @@ def build_index() -> VectorStoreIndex:
     # PyMuPDF gives much cleaner text than pypdf for scientific PDFs
     reader = PyMuPDFReader()
     documents = []
+    skipped_pages = 0
     for pdf_path in pdf_files:
         pages = reader.load_data(file_path=pdf_path)
         for page_num, page_doc in enumerate(pages, start=1):
+            if SKIP_FIRST_PAGE and page_num == 1:
+                skipped_pages += 1
+                continue
             page_doc.metadata["file_name"] = pdf_path.name
             page_doc.metadata["page_label"] = str(page_num)
             documents.append(page_doc)
-    log.info(f"Loaded {len(documents)} page(s) across {len(pdf_files)} PDF(s)")
+    if SKIP_FIRST_PAGE:
+        log.info(
+            f"Loaded {len(documents)} page(s) across {len(pdf_files)} PDF(s) "
+            f"(skipped {skipped_pages} first page(s) — abstract bleed mitigation)"
+        )
+    else:
+        log.info(f"Loaded {len(documents)} page(s) across {len(pdf_files)} PDF(s)")
 
     # Normalize metadata so citations are clean
     for doc in documents:
