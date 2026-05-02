@@ -6,6 +6,8 @@ The interesting part isn't the stack. It's the eval set.
 
 ## What it does
 
+![Streamlit UI showing a clinical query, generated answer, and expanded sources panel](docs/screenshot.png)
+
 Given a clinical question (e.g. *"What are first-line pharmacotherapy options for adolescent MDD?"*), the system retrieves the most relevant chunks from the indexed practice parameters and generates an answer with inline page-level citations in the form `[source: depression.pdf, p. 12]`. If asked about a condition not covered by the corpus, the system declines rather than hallucinating from adjacent material.
 
 The project is structured around a **32-question hand-verified evaluation set**, with each retrieval/prompt change measured against it before being kept.
