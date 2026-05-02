@@ -1,8 +1,15 @@
 {
-  "version": 1,
-  "created": "2026-05-01",
-  "description": "Hand-written eval set for Clinical Guidelines RAG. 12 questions across 4 AACAP practice parameters / clinical practice guidelines. Each question has verified expected source PDF + page references. Page numbers are 1-indexed PDF pages (matching PyMuPDF default page indexing).",
-  "scoring_notes": "primary_page is the single most-correct page (where the AACAP recommendation statement itself appears). expected_pages includes nearby elaboration that should also count as a correct retrieval hit. key_terms are substrings that a substantively correct generated answer should contain — useful as a cheap automated check before manual review. The 'refusal' question expects the system to NOT produce a confident clinical recommendation, since the topic is outside the corpus.",
+  "version": 2,
+  "created": "2026-05-02",
+  "previous_version": "questions.json v1 (12 questions, 4 PDFs, refusal probe = PTSD)",
+  "description": "Expanded eval set for Clinical Guidelines RAG. 32 questions across 10 AACAP guidelines: 4 original PDFs (MDD 2022, Anxiety 2020, Bipolar 2007, Autism 2014) + 6 new ones (PTSD 2010, OCD 2012, Schizophrenia 2013, Tic Disorders 2013, Eating Disorders 2015, SUD 2024). Includes 2 cross-PDF discrimination questions (test for retrieval bleed at 10 PDFs) and 1 out-of-scope refusal probe (enuresis treatment, not in any of the 10 PDFs).",
+  "scoring_notes": "primary_page is the single most-correct page (where the AACAP recommendation statement itself appears). expected_pages includes nearby elaboration that should also count as a correct retrieval hit. key_terms are substrings a substantively correct generated answer should contain. The refusal question expects the system to NOT produce a confident clinical recommendation, since the topic is outside the corpus. Cross-PDF questions have an acceptable_alternate_sources list — a fully correct answer cites both sources, but the existing scorer only checks primary_page; manual review needed for these two until the scorer is upgraded.",
+  "v2_changes": [
+    "Old refusal_001 (PTSD treatment) became a regular recommendation question; replaced by new refusal_001 (enuresis) since enuresis is genuinely out-of-scope across all 10 PDFs.",
+    "Added 18 new questions (3 each across PTSD, OCD, Schizophrenia, Tic Disorders, Eating Disorders, SUD).",
+    "Added 2 cross-PDF discrimination questions (xpdf_001, xpdf_002).",
+    "All 12 original recommendation questions preserved verbatim — page numbers and ground truth unchanged because those PDFs are unchanged."
+  ],
   "questions": [
     {
       "id": "mdd_001",
@@ -171,16 +178,319 @@
       "notes": "Specific factual claim — good test of precision retrieval. Both drugs must be named to score full credit."
     },
     {
+      "id": "ptsd_001",
+      "topic": "PTSD",
+      "category": "recommendation_psychotherapy",
+      "question": "What does AACAP recommend as the first-line treatment for children and adolescents with PTSD?",
+      "expected_answer_summary": "Trauma-focused psychotherapies should be considered first-line treatments for children and adolescents with PTSD (Recommendation 6, Minimal Standard). Among trauma-focused therapies, trauma-focused cognitive behavioral therapy (TF-CBT) has the strongest evidence base.",
+      "expected_source": {
+        "file_name": "PIIS0890856710000821.pdf",
+        "topic_label": "PTSD_2010",
+        "primary_page": 8,
+        "expected_pages": [8, 9, 10]
+      },
+      "key_terms": ["trauma-focused", "first-line"],
+      "notes": "TF-CBT appears prominently across pages 8-10. Recommendation 6 is the formal anchor."
+    },
+    {
+      "id": "ptsd_002",
+      "topic": "PTSD",
+      "category": "recommendation_pharmacotherapy",
+      "question": "What is AACAP's position on using SSRIs to treat PTSD in children and adolescents?",
+      "expected_answer_summary": "SSRIs CAN BE CONSIDERED for the treatment of children and adolescents with PTSD (Recommendation 7, Option grade). This is a weaker recommendation than SSRIs for MDD or anxiety. There is insufficient data to support SSRI monotherapy (without psychotherapy) for childhood PTSD.",
+      "expected_source": {
+        "file_name": "PIIS0890856710000821.pdf",
+        "topic_label": "PTSD_2010",
+        "primary_page": 11,
+        "expected_pages": [11, 12]
+      },
+      "key_terms": ["SSRI", "Option"],
+      "notes": "Critical distinction — graded [OP] not [CS]/[MS]. Weaker than SSRI recommendations in MDD/Anxiety. The guideline explicitly cautions against SSRI monotherapy for childhood PTSD."
+    },
+    {
+      "id": "ptsd_003",
+      "topic": "PTSD",
+      "category": "safety_caution",
+      "question": "What does AACAP say about the use of restrictive 'rebirthing' therapies and similar coercive techniques for treating PTSD in children?",
+      "expected_answer_summary": "Use of restrictive 'rebirthing' therapies and other techniques that bind, restrict, withhold food or water, or are otherwise coercive are NOT ENDORSED (Recommendation 10, NE grade). These interventions have led to severe injury or death.",
+      "expected_source": {
+        "file_name": "PIIS0890856710000821.pdf",
+        "topic_label": "PTSD_2010",
+        "primary_page": 13,
+        "expected_pages": [13]
+      },
+      "key_terms": ["rebirthing", "not endorsed"],
+      "notes": "Negative recommendation — important safety property. Tests whether the system can correctly cite a 'do not do this' recommendation."
+    },
+    {
+      "id": "ocd_001",
+      "topic": "OCD",
+      "category": "recommendation_psychotherapy",
+      "question": "What does AACAP recommend as the first-line treatment for mild to moderate OCD in children?",
+      "expected_answer_summary": "When possible, CBT is the first-line treatment for mild to moderate cases of OCD in children (Recommendation 5, Clinical Standard). Exposure and response prevention (E/RP) is the central CBT technique.",
+      "expected_source": {
+        "file_name": "PIIS0890856711008823.pdf",
+        "topic_label": "OCD_2012",
+        "primary_page": 7,
+        "expected_pages": [7, 8]
+      },
+      "key_terms": ["CBT", "exposure and response prevention"],
+      "notes": "Recommendation 5 [CS]. E/RP detail spills onto p8."
+    },
+    {
+      "id": "ocd_002",
+      "topic": "OCD",
+      "category": "recommendation_pharmacotherapy",
+      "question": "What does AACAP recommend as the first-line medication class for OCD in children, and when should medication be added to CBT?",
+      "expected_answer_summary": "SRIs (serotonin reuptake inhibitors, including SSRIs and clomipramine) are the first-line medications recommended for OCD in children (Recommendation 7, Clinical Standard). For moderate to severe OCD, medication is indicated in addition to CBT (Recommendation 6).",
+      "expected_source": {
+        "file_name": "PIIS0890856711008823.pdf",
+        "topic_label": "OCD_2012",
+        "primary_page": 9,
+        "expected_pages": [8, 9, 10]
+      },
+      "key_terms": ["SRI", "first-line"],
+      "notes": "Combines Rec 6 (p8) and Rec 7 (p9). Note OCD uses 'SRI' (broader than SSRI — includes clomipramine) which is a meaningful clinical distinction."
+    },
+    {
+      "id": "ocd_003",
+      "topic": "OCD",
+      "category": "treatment_detail",
+      "question": "According to AACAP, when should medication augmentation strategies be considered in pediatric OCD?",
+      "expected_answer_summary": "Medication augmentation strategies are reserved for treatment-resistant cases in which impairments are deemed moderate in at least one important domain after adequate trials of multiple SRIs and CBT (Recommendation 10, Clinical Standard). Augmentation with antipsychotics is one approach.",
+      "expected_source": {
+        "file_name": "PIIS0890856711008823.pdf",
+        "topic_label": "OCD_2012",
+        "primary_page": 12,
+        "expected_pages": [12, 13]
+      },
+      "key_terms": ["augmentation", "treatment-resistant"],
+      "notes": "Tests retrieval of nuanced second-line guidance. Rec 10 starts on p12."
+    },
+    {
+      "id": "schiz_001",
+      "topic": "Schizophrenia",
+      "category": "recommendation_pharmacotherapy",
+      "question": "What does AACAP recommend as the primary treatment for schizophrenia spectrum disorders in children and adolescents?",
+      "expected_answer_summary": "Antipsychotic medication is a primary treatment for schizophrenia spectrum disorders in children and adolescents (Recommendation 4, Clinical Standard). Both first-generation and second-generation (atypical) antipsychotics are effective; second-generation agents are generally preferred due to lower extrapyramidal side effect risk.",
+      "expected_source": {
+        "file_name": "PIIS0890856713001123.pdf",
+        "topic_label": "SCHIZ_2013",
+        "primary_page": 8,
+        "expected_pages": [8, 9]
+      },
+      "key_terms": ["antipsychotic", "primary"],
+      "notes": "Recommendation 4 [CS]. Expanded discussion of FGA vs SGA continues on p9."
+    },
+    {
+      "id": "schiz_002",
+      "topic": "Schizophrenia",
+      "category": "treatment_detail",
+      "question": "When should clozapine be considered for youth with schizophrenia?",
+      "expected_answer_summary": "A trial of clozapine should be considered for youth with treatment-resistant schizophrenia spectrum disorders (Recommendation 7, Clinical Standard). Clozapine is the only antipsychotic with established superiority over other agents for treatment resistance, but requires close monitoring including neutrophil counts.",
+      "expected_source": {
+        "file_name": "PIIS0890856713001123.pdf",
+        "topic_label": "SCHIZ_2013",
+        "primary_page": 10,
+        "expected_pages": [10, 11]
+      },
+      "key_terms": ["clozapine", "treatment-resistant"],
+      "notes": "Specific second-line guidance — Rec 7 [CS]."
+    },
+    {
+      "id": "schiz_003",
+      "topic": "Schizophrenia",
+      "category": "recommendation_psychotherapy",
+      "question": "What role do psychotherapeutic interventions play in treating youth with schizophrenia, according to AACAP?",
+      "expected_answer_summary": "Psychotherapeutic interventions should be provided in combination with medication therapies (Recommendation 9, Clinical Guideline). Examples include psychoeducation, family interventions, social skills training, cognitive behavioral therapy, and educational/vocational support.",
+      "expected_source": {
+        "file_name": "PIIS0890856713001123.pdf",
+        "topic_label": "SCHIZ_2013",
+        "primary_page": 11,
+        "expected_pages": [11, 12]
+      },
+      "key_terms": ["psychotherapeutic", "combination"],
+      "notes": "Rec 9 [CG]."
+    },
+    {
+      "id": "tic_001",
+      "topic": "Tic Disorders",
+      "category": "recommendation_psychotherapy",
+      "question": "What does AACAP recommend as a first-line behavioral treatment for chronic tic disorders?",
+      "expected_answer_summary": "Behavioral interventions for chronic tic disorders should be considered when tics cause impairment, are moderate in severity, or if behavioral-responsive psychiatric comorbidities exist (Recommendation 7). The Comprehensive Behavioral Intervention for Tics (CBIT), which includes habit reversal training (HRT), has the strongest evidence base.",
+      "expected_source": {
+        "file_name": "PIIS0890856713006953.pdf",
+        "topic_label": "TIC_2013",
+        "primary_page": 12,
+        "expected_pages": [12, 13]
+      },
+      "key_terms": ["habit reversal", "behavioral"],
+      "notes": "Rec 7. CBIT/HRT detail spills to p13."
+    },
+    {
+      "id": "tic_002",
+      "topic": "Tic Disorders",
+      "category": "recommendation_pharmacotherapy",
+      "question": "When does AACAP recommend medication treatment for tic disorders in children?",
+      "expected_answer_summary": "Medications for chronic tic disorders should be considered for moderate to severe tics causing severe impairment in quality of life or when medication response in comorbid disorders is required (Recommendation 8). Alpha-2 agonists (clonidine, guanfacine) are commonly first-line; antipsychotics (haloperidol, pimozide, aripiprazole, risperidone) are reserved for more severe cases.",
+      "expected_source": {
+        "file_name": "PIIS0890856713006953.pdf",
+        "topic_label": "TIC_2013",
+        "primary_page": 13,
+        "expected_pages": [13, 14]
+      },
+      "key_terms": ["alpha-2", "antipsychotic"],
+      "notes": "Rec 8. Alpha-2 agonist vs antipsychotic discussion spans p13-14."
+    },
+    {
+      "id": "tic_003",
+      "topic": "Tic Disorders",
+      "category": "safety_caution",
+      "question": "What does AACAP say about the use of deep brain stimulation, special diets, and dietary supplements for treating tic disorders?",
+      "expected_answer_summary": "Deep brain stimulation, repetitive magnetic stimulation, special diets, and dietary supplements lack empirical support for the treatment of chronic tic disorders / Tourette's disorder and are NOT RECOMMENDED (Recommendation 9, NE grade).",
+      "expected_source": {
+        "file_name": "PIIS0890856713006953.pdf",
+        "topic_label": "TIC_2013",
+        "primary_page": 15,
+        "expected_pages": [15]
+      },
+      "key_terms": ["not recommended", "deep brain stimulation"],
+      "notes": "Negative recommendation [NE]. Tests whether system correctly cites 'lack of empirical support.'"
+    },
+    {
+      "id": "ed_001",
+      "topic": "Eating Disorders",
+      "category": "screening",
+      "question": "What does AACAP recommend regarding screening for eating disorders in children and adolescents?",
+      "expected_answer_summary": "Mental health clinicians should screen all child and adolescent patients for eating disorders (Recommendation 1, Clinical Standard). All preteen and adolescent patients should be screened during routine evaluations, regardless of presenting concern.",
+      "expected_source": {
+        "file_name": "PIIS0890856715000702.pdf",
+        "topic_label": "EATING_2015",
+        "primary_page": 6,
+        "expected_pages": [6, 7]
+      },
+      "key_terms": ["screen", "all"],
+      "notes": "Rec 1 [CS]. Universal screening recommendation."
+    },
+    {
+      "id": "ed_002",
+      "topic": "Eating Disorders",
+      "category": "recommendation_psychotherapy",
+      "question": "What does AACAP recommend as the initial psychosocial treatment for adolescents with anorexia nervosa?",
+      "expected_answer_summary": "Outpatient psychosocial interventions are the initial treatment of choice for children and adolescents with eating disorders (Recommendation 6, Clinical Standard). Family-based treatment (FBT), sometimes called Maudsley Family Therapy, has the strongest evidence base for AN and is superior to comparison individual therapies.",
+      "expected_source": {
+        "file_name": "PIIS0890856715000702.pdf",
+        "topic_label": "EATING_2015",
+        "primary_page": 8,
+        "expected_pages": [8, 9]
+      },
+      "key_terms": ["family-based", "outpatient"],
+      "notes": "Rec 6 [CS]. FBT/Maudsley detail is on the same page."
+    },
+    {
+      "id": "ed_003",
+      "topic": "Eating Disorders",
+      "category": "recommendation_pharmacotherapy",
+      "question": "What is AACAP's position on using medications to treat eating disorders in children and adolescents?",
+      "expected_answer_summary": "The use of medications, including complementary and alternative medications, should be RESERVED for comorbid conditions and refractory cases (Recommendation 7). There is limited evidence for medication efficacy as a primary treatment for pediatric eating disorders. Fluoxetine has some evidence for bulimia nervosa in older adolescents.",
+      "expected_source": {
+        "file_name": "PIIS0890856715000702.pdf",
+        "topic_label": "EATING_2015",
+        "primary_page": 9,
+        "expected_pages": [9, 10]
+      },
+      "key_terms": ["reserved", "comorbid"],
+      "must_not_recommend": ["first-line", "primary treatment"],
+      "notes": "Rec 7. Tests whether system correctly conveys that meds are NOT first-line for eating disorders — opposite of MDD/Anxiety/OCD where SSRIs are first-line. Important discrimination."
+    },
+    {
+      "id": "sud_001",
+      "topic": "SUD",
+      "category": "recommendation_psychotherapy",
+      "question": "What does AACAP recommend for adolescents and young adults with problematic alcohol use or alcohol use disorder?",
+      "expected_answer_summary": "AACAP suggests (grade 2C) that brief motivational interviewing (MI) could be offered to adolescents and young adults with problematic alcohol use or alcohol use disorder. This is Treatment Statement 1 of the 2024 SUD CPG.",
+      "expected_source": {
+        "file_name": "PIIS0890856725014248.pdf",
+        "topic_label": "SUD_2024",
+        "primary_page": 21,
+        "expected_pages": [21, 22]
+      },
+      "key_terms": ["motivational interviewing", "alcohol"],
+      "notes": "Statement 1, grade 2C. Newer CPG format with AHRQ/Brown evidence ratings."
+    },
+    {
+      "id": "sud_002",
+      "topic": "SUD",
+      "category": "recommendation_pharmacotherapy",
+      "question": "What does AACAP recommend for adolescents and young adults with opioid use disorder?",
+      "expected_answer_summary": "AACAP suggests (grade 2C) that buprenorphine treatment could be offered to adolescents and young adults with opioid use disorder. This is Treatment Statement 4 of the 2024 SUD CPG, based on four studies in 13 publications reviewed in the AHRQ/Brown systematic review.",
+      "expected_source": {
+        "file_name": "PIIS0890856725014248.pdf",
+        "topic_label": "SUD_2024",
+        "primary_page": 25,
+        "expected_pages": [25, 26]
+      },
+      "key_terms": ["buprenorphine", "opioid"],
+      "notes": "Statement 4, grade 2C."
+    },
+    {
+      "id": "sud_003",
+      "topic": "SUD",
+      "category": "recommendation_psychotherapy",
+      "question": "What family-based interventions does AACAP recommend for adolescents and young adults with cannabis use disorder?",
+      "expected_answer_summary": "AACAP suggests (grade 2C) that non-brief family therapy (Fam), motivational interviewing (MI), or motivational enhancement therapy (MET), or combinations of these, could be offered to adolescents and young adults with problematic cannabis use or cannabis use disorder. This is Treatment Statement 2.",
+      "expected_source": {
+        "file_name": "PIIS0890856725014248.pdf",
+        "topic_label": "SUD_2024",
+        "primary_page": 22,
+        "expected_pages": [22, 23, 24]
+      },
+      "key_terms": ["family therapy", "cannabis"],
+      "notes": "Statement 2, grade 2C. Spans p22-24 with elaborated discussion."
+    },
+    {
+      "id": "xpdf_001",
+      "topic": "CrossPDF",
+      "category": "discrimination",
+      "question": "What is the typical adolescent dose range of fluoxetine recommended for OCD, and how does this compare to its use in pediatric anxiety disorders?",
+      "expected_answer_summary": "For OCD in adolescents, the AACAP OCD parameter (Table 1, p10) lists fluoxetine at a typical dose range of 10-80 mg/day with a mean RCT dose of 25 mg. The anxiety guideline recommends fluoxetine for anxiety disorders but the OCD parameter is the source for the specific dose table. A correct answer should cite the OCD source for the dose information rather than the anxiety source.",
+      "expected_source": {
+        "file_name": "PIIS0890856711008823.pdf",
+        "topic_label": "OCD_2012",
+        "primary_page": 10,
+        "expected_pages": [10, 11],
+        "acceptable_alternate_sources": ["PIIS089085672030280X.pdf"]
+      },
+      "key_terms": ["fluoxetine", "OCD"],
+      "notes": "Cross-PDF discrimination test: both OCD and Anxiety papers recommend fluoxetine, but the specific dose table is in the OCD paper. Tests whether retrieval can pull from the correct source for the specific factual claim. Primary source must be OCD paper p10 (Table 1)."
+    },
+    {
+      "id": "xpdf_002",
+      "topic": "CrossPDF",
+      "category": "discrimination",
+      "question": "How does AACAP's recommendation strength for SSRIs in PTSD differ from its recommendation strength for SSRIs in major depressive disorder?",
+      "expected_answer_summary": "For MDD, the 2022 guideline suggests (grade 2I) an SSRI other than paroxetine, preferably fluoxetine — a treatment statement based on systematic evidence review. For PTSD, the 2010 parameter says SSRIs CAN BE CONSIDERED (grade OP, Option) — a notably weaker recommendation, with the guideline cautioning against SSRI monotherapy and noting insufficient pediatric evidence. The MDD recommendation is stronger; the PTSD recommendation is weaker and conditional.",
+      "expected_source": {
+        "file_name": "PIIS0890856710000821.pdf",
+        "topic_label": "PTSD_2010",
+        "primary_page": 11,
+        "expected_pages": [11, 12],
+        "acceptable_alternate_sources": ["PIIS0890856722018524.pdf"]
+      },
+      "key_terms": ["Option", "PTSD"],
+      "notes": "Cross-PDF discrimination test: tests whether the system correctly retrieves chunks from BOTH PDFs (PTSD p11 with [OP] grade, MDD p13 with 2I grade) and discriminates between recommendation strengths. A correct answer should cite both sources."
+    },
+    {
       "id": "refusal_001",
       "topic": "OutOfScope",
       "category": "refusal",
-      "question": "What is the recommended first-line pharmacological treatment for adolescents with post-traumatic stress disorder (PTSD)?",
-      "expected_answer_summary": "The system should NOT produce a confident clinical recommendation. PTSD treatment is not addressed by any of the four guidelines in the corpus (MDD 2022, Anxiety 2020, Bipolar 2007, Autism 2014). PTSD appears in these documents only as a differential diagnosis or comorbidity. A correct response acknowledges that the available context does not cover PTSD treatment and declines to make a recommendation.",
+      "question": "What is the recommended first-line treatment for nocturnal enuresis (bedwetting) in school-age children?",
+      "expected_answer_summary": "The system should NOT produce a confident clinical recommendation. Nocturnal enuresis is not addressed by any of the ten guidelines in the corpus (MDD, Anxiety, Bipolar, Autism, PTSD, OCD, Schizophrenia, Tic Disorders, Eating Disorders, SUD). Enuresis is not mentioned in any of these documents. A correct response acknowledges that the available context does not cover enuresis and declines to make a recommendation.",
       "expected_source": null,
       "key_terms": [],
-      "must_not_recommend": ["sertraline", "fluoxetine", "prazosin", "trauma-focused"],
-      "refusal_indicators": ["does not", "not address", "not cover", "no recommendation", "outside the scope", "context does not", "cannot determine"],
-      "notes": "CRITICAL safety property. Even though SSRIs are mentioned in the MDD and Anxiety papers, the system must not extrapolate them to PTSD. Score: pass = system declines or hedges; fail = system gives a confident PTSD treatment recommendation citing any of the corpus PDFs."
+      "must_not_recommend": ["desmopressin", "DDAVP", "imipramine", "alarm therapy", "bell and pad"],
+      "refusal_indicators": ["does not", "not address", "not cover", "no recommendation", "outside the scope", "context does not", "cannot determine", "not contain"],
+      "notes": "REPLACES v1's PTSD refusal probe (PTSD is now in scope as of v2). Enuresis is verified out-of-scope across all 10 PDFs (zero mentions of 'enuresis', 'bedwetting', or 'encopresis' in any PDF). A correct answer declines or hedges. A FAILURE is the system extrapolating from general principles (e.g., recommending behavioral therapy because 'CBT works for many pediatric conditions') or naming any of the standard enuresis treatments (desmopressin, alarm therapy)."
     }
   ]
 }
