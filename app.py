@@ -22,16 +22,22 @@ with st.sidebar:
     st.header("About")
     st.markdown(
         """
-This Q&A bot is grounded in **4 AACAP Practice Parameters** covering:
+This Q&A bot is grounded in **10 AACAP Practice Parameters** covering pediatric:
 
-- Major Depressive Disorder
-- Anxiety Disorders
-- Bipolar Disorder
-- Autism Spectrum Disorder
+- Major depressive disorder
+- Anxiety disorders
+- Bipolar disorder
+- Autism spectrum disorder
+- PTSD
+- OCD
+- Schizophrenia
+- Tic disorders
+- Eating disorders
+- Substance use disorders
 
 Every answer cites the exact PDF page it came from. The system is
-instructed to **refuse** questions outside this corpus rather than
-extrapolate from adjacent material.
+instructed to **refuse** questions outside this corpus (e.g. enuresis)
+rather than extrapolate from adjacent material.
         """
     )
     st.divider()
@@ -44,7 +50,7 @@ extrapolate from adjacent material.
 # ── Main ──────────────────────────────────────────────────────────────
 st.title("🏥 Clinical Guidelines Q&A")
 st.caption(
-    "Grounded answers from AACAP Practice Parameters with page-level citations."
+    "Grounded answers from 10 AACAP Practice Parameters with page-level citations."
 )
 
 
@@ -53,12 +59,13 @@ if "query" not in st.session_state:
     st.session_state.query = ""
 
 
-# Example questions — one per topic in the corpus
+# Example questions — mix of original 4-PDF corpus (known to retrieve well)
+# and newer 10-PDF additions, spanning both AACAP grading formats
 EXAMPLES = [
     "What are first-line pharmacotherapy options for adolescent MDD?",
     "How should clinicians screen for pediatric anxiety disorders?",
-    "What is the recommended workup for suspected pediatric bipolar disorder?",
-    "What evidence-based interventions exist for autism spectrum disorder?",
+    "What treatment approaches are recommended for pediatric schizophrenia?",
+    "What pharmacological options are recommended for adolescent substance use disorders?",
 ]
 
 
