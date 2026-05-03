@@ -1,25 +1,25 @@
-"""Parse PDFs from data/raw/, chunk, embed, and store in ChromaDB."""
+"""Parse PDFs from data/raw/, chunk, embed, and store in Qdrant Cloud."""
 import logging
 from pathlib import Path
 
-import chromadb
 from llama_index.core import (
     Settings,
-    SimpleDirectoryReader,
     StorageContext,
     VectorStoreIndex,
 )
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.readers.file import PyMuPDFReader
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 
 from src.config import (
-    CHROMA_DIR,
     CHUNK_OVERLAP,
     CHUNK_SIZE,
     COLLECTION_NAME,
     EMBED_MODEL,
+    QDRANT_API_KEY,
+    QDRANT_URL,
     RAW_DIR,
 )
 
@@ -65,6 +65,7 @@ def build_index() -> VectorStoreIndex:
             page_doc.metadata["file_name"] = pdf_path.name
             page_doc.metadata["page_label"] = str(page_num)
             documents.append(page_doc)
+
     if SKIP_FIRST_PAGE:
         log.info(
             f"Loaded {len(documents)} page(s) across {len(pdf_files)} PDF(s) "
@@ -77,21 +78,23 @@ def build_index() -> VectorStoreIndex:
     for doc in documents:
         if "file_path" in doc.metadata:
             doc.metadata["source"] = Path(doc.metadata["file_path"]).name
-        # PyMuPDFReader sets "source" too sometimes; ensure page label exists
         doc.metadata.setdefault(
             "page_label", str(doc.metadata.get("page", "?"))
         )
 
-    # Set up Chroma — wipe + recreate the collection for clean re-runs
-    db = chromadb.PersistentClient(path=str(CHROMA_DIR))
+    # Set up Qdrant — wipe + recreate the collection for clean re-runs.
+    # QdrantVectorStore auto-creates the collection on first write.
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     try:
-        db.delete_collection(COLLECTION_NAME)
+        client.delete_collection(COLLECTION_NAME)
         log.info(f"Deleted existing collection '{COLLECTION_NAME}'")
     except Exception:
         pass
-    collection = db.create_collection(COLLECTION_NAME)
 
-    vector_store = ChromaVectorStore(chroma_collection=collection)
+    vector_store = QdrantVectorStore(
+        client=client,
+        collection_name=COLLECTION_NAME,
+    )
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     log.info("Embedding + indexing… (first run downloads the embedding model)")
@@ -101,7 +104,11 @@ def build_index() -> VectorStoreIndex:
         show_progress=True,
     )
 
-    log.info(f"Indexed {collection.count()} chunks into '{COLLECTION_NAME}'")
+    # Verify by hitting Qdrant directly for the canonical count
+    collection_info = client.get_collection(COLLECTION_NAME)
+    log.info(
+        f"Indexed {collection_info.points_count} chunks into '{COLLECTION_NAME}'"
+    )
     return index
 
 

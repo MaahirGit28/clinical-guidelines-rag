@@ -1,20 +1,21 @@
 """Query the indexed clinical guidelines via Groq."""
 import logging
 
-import chromadb
 from llama_index.core import Settings, StorageContext, VectorStoreIndex
 from llama_index.core.prompts import PromptTemplate
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 
 from src.config import (
-    CHROMA_DIR,
     COLLECTION_NAME,
     EMBED_MODEL,
     GROQ_API_KEY,
     LLM_MODEL,
     LLM_TEMPERATURE,
+    QDRANT_API_KEY,
+    QDRANT_URL,
     TOP_K,
 )
 
@@ -50,9 +51,11 @@ def load_query_engine():
         context_window=8192,
     )
 
-    db = chromadb.PersistentClient(path=str(CHROMA_DIR))
-    collection = db.get_collection(COLLECTION_NAME)
-    vector_store = ChromaVectorStore(chroma_collection=collection)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    vector_store = QdrantVectorStore(
+        client=client,
+        collection_name=COLLECTION_NAME,
+    )
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     index = VectorStoreIndex.from_vector_store(

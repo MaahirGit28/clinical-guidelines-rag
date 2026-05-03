@@ -49,12 +49,15 @@ griffecli==2.0.2
 griffelib==2.0.2
 grpcio==1.80.0
 h11==0.16.0
+h2==4.3.0
 hf-xet==1.4.3
+hpack==4.1.0
 httpcore==1.0.9
 httptools==0.7.1
 httpx==0.28.1
 httpx-sse==0.4.3
 huggingface_hub==0.36.2
+hyperframe==6.1.0
 idna==3.13
 importlib_metadata==8.7.1
 importlib_resources==7.1.0
@@ -91,6 +94,7 @@ llama-index-llms-openai==0.7.7
 llama-index-llms-openai-like==0.7.2
 llama-index-readers-file==0.6.0
 llama-index-vector-stores-chroma==0.5.5
+llama-index-vector-stores-qdrant==0.10.0
 llama-index-workflows==2.20.0
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
@@ -122,6 +126,7 @@ packaging==26.2
 pandas==2.3.3
 pillow==12.2.0
 platformdirs==4.9.6
+portalocker==3.2.0
 propcache==0.4.1
 protobuf==6.33.6
 pyarrow==24.0.0
@@ -143,6 +148,7 @@ python-dotenv==1.2.2
 python-multipart==0.0.27
 pytz==2026.1.post1
 PyYAML==6.0.3
+qdrant-client==1.17.1
 ragas==0.4.3
 referencing==0.37.0
 regex==2026.4.4
