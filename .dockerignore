@@ -1,0 +1,16 @@
+# Build context bloat
+.venv/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+
+# Secrets — never bake into an image
+.env
+
+# Copyrighted corpus — stays out of the artifact
+data/
+
+# Not needed at runtime
+eval/results/
+docs/
