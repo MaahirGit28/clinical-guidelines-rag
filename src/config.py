@@ -39,4 +39,4 @@ CHUNK_OVERLAP = 50
 TOP_K = 8
 
 # --- Qdrant ---
-COLLECTION_NAME = "aacap_guidelines"
+COLLECTION_NAME = "Clinical_RAG1"

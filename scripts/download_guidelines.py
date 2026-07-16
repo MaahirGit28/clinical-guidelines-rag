@@ -1,63 +1,79 @@
-"""Download AACAP clinical practice parameters into data/raw/.
+"""Download AACAP Clinical Practice Guidelines and Practice Parameters.
 
-The list below is a *starter*. Curate based on your scope and verify URLs against
-https://www.aacap.org/AACAP/Resources_for_Primary_Care/Practice_Parameters_and_Resource_Centers/Practice_Parameters.aspx
-since some links rotate. AACAP-published guidelines are intended for clinician use
-and are publicly available.
+Edit GUIDELINE_URLS below with verified PDF links from aacap.org. Files are
+saved to data/raw/ and skipped if they already exist.
+
+If a download fails (paywall, JS redirect, etc.), grab the PDF manually
+from your browser and drop it in data/raw/ — the ingest step is agnostic
+to source.
 """
-from __future__ import annotations
-
+import logging
 import sys
 from pathlib import Path
 
 import requests
 from tqdm import tqdm
 
+# Allow running as `python scripts/download_guidelines.py` from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.config import RAW_PDF_DIR  # noqa: E402
+from src.config import RAW_DIR
 
-# Curated starter set. Add ~10–15 more for a real evaluation corpus.
-GUIDELINES: dict[str, str] = {
-    "depressive_disorders.pdf": (
-        "https://www.aacap.org/App_Themes/AACAP/docs/practice_parameters/"
-        "depressive_disorders_practice_parameter.pdf"
-    ),
-    "psychiatric_assessment.pdf": (
-        "https://www.aacap.org/App_Themes/AACAP/docs/practice_parameters/"
-        "psychiatric_assessment_practice_parameter.pdf"
-    ),
-    # TODO: add ADHD, autism, anxiety, OCD, bipolar, eating disorders,
-    # substance use, suicidal behavior, PTSD, intellectual disability, etc.
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
+)
+log = logging.getLogger(__name__)
+
+# (filename, url) — verify each URL resolves to a PDF before running.
+GUIDELINE_URLS: list[tuple[str, str]] = [
+    # ("adhd_practice_parameter.pdf", "https://www.aacap.org/..."),
+    # ("anxiety_practice_parameter.pdf", "https://www.aacap.org/..."),
+    # ("depression_cpg.pdf", "https://www.aacap.org/..."),
+]
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+    )
 }
 
-HEADERS = {"User-Agent": "clinical-guidelines-rag/0.1 (research prototype)"}
+
+def download_one(filename: str, url: str) -> bool:
+    target = RAW_DIR / filename
+    if target.exists():
+        log.info(f"SKIP {filename} (already present)")
+        return True
+
+    try:
+        with requests.get(url, headers=HEADERS, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            with open(target, "wb") as f, tqdm(
+                total=total, unit="B", unit_scale=True, desc=filename
+            ) as bar:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    bar.update(len(chunk))
+        log.info(f"OK   {filename}")
+        return True
+    except Exception as e:
+        log.error(f"FAIL {filename}: {e}")
+        if target.exists():
+            target.unlink()
+        return False
 
 
-def download(url: str, dest: Path) -> None:
-    if dest.exists() and dest.stat().st_size > 0:
-        tqdm.write(f"  ✓ {dest.name} (cached)")
+def main():
+    if not GUIDELINE_URLS:
+        log.warning(
+            "GUIDELINE_URLS is empty. Populate it with verified AACAP PDF "
+            "URLs, or drop PDFs directly into data/raw/."
+        )
         return
-    resp = requests.get(url, stream=True, timeout=30, headers=HEADERS)
-    resp.raise_for_status()
-    with open(dest, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=8192):
-            f.write(chunk)
-    tqdm.write(f"  ✓ {dest.name} ({dest.stat().st_size // 1024} KB)")
 
-
-def main() -> None:
-    print(f"Downloading {len(GUIDELINES)} guidelines to {RAW_PDF_DIR}")
-    failures: list[str] = []
-    for filename, url in tqdm(GUIDELINES.items(), desc="Fetching"):
-        try:
-            download(url, RAW_PDF_DIR / filename)
-        except Exception as exc:  # noqa: BLE001
-            tqdm.write(f"  ✗ {filename}: {exc}")
-            failures.append(filename)
-    if failures:
-        print(f"\n{len(failures)} failed: {failures}")
-        sys.exit(1)
-    print("\nDone. Next: python -m src.ingest")
+    log.info(f"Downloading {len(GUIDELINE_URLS)} guideline(s) → {RAW_DIR}")
+    results = [download_one(name, url) for name, url in GUIDELINE_URLS]
+    log.info(f"Done: {sum(results)}/{len(results)} succeeded")
 
 
 if __name__ == "__main__":
