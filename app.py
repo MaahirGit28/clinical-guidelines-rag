@@ -41,7 +41,7 @@ rather than extrapolate from adjacent material.
         """
     )
     st.divider()
-    st.caption("Stack: LlamaIndex · ChromaDB · BGE-M3 · Llama-3.3-70B (Groq)")
+    st.caption("Stack: LlamaIndex · Qdrant Cloud · BGE-M3 · Llama-3.3-70B (Groq)")
     st.caption(
         "[GitHub repo](https://github.com/MaahirGit28/clinical-guidelines-rag)"
     )
